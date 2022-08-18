@@ -60,5 +60,9 @@ public class AccountService {
         return accountDao.linkUserToAccount(aId, uId);
     }
 
+    public String unlinkUserFromAccount(int aId, int uId) throws SQLException {
+        return accountDao.unlinkUserFromAccount(aId, uId);
+    }
+
 }
 

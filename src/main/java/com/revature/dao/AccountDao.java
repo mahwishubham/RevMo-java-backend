@@ -108,6 +108,21 @@ public class AccountDao {
         }
     }
 
+    public String unlinkUserFromAccount(int aId, int uId) throws SQLException {
+        try (Connection con = ConnectionUtility.createConnection()) {
+            PreparedStatement ps = con.prepareStatement("DELETE FROM users_with_accounts " +
+                    "WHERE account_id = ? AND user_id = ? RETURNING *");
+            ps.setInt(1, aId);
+            ps.setInt(2, uId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return "Account " + aId + " successfully unlinked from user " + uId + "!";
+            } else {
+                return "Account " + aId + " is not associated with user " + uId + ".";
+            }
+        }
+    }
+
 //    public Account updateAccount() {
 //        return null;
 //    }
