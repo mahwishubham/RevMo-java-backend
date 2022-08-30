@@ -122,12 +122,13 @@ public class UserDao {
         }
     }
 
-    public void deleteToken(String token) {
+    public boolean deleteToken(String token) {
         try (Connection con = ConnectionUtility.createConnection()) {
 
             PreparedStatement ps = con.prepareStatement("UPDATE users SET tokenvalue = null WHERE tokenvalue = convert_to(?, 'LATIN1')  RETURNING *");
             ps.setString(1, token);
             ResultSet rs = ps.executeQuery();
+            return rs.next();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
