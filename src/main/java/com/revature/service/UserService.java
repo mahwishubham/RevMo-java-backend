@@ -132,7 +132,6 @@ public class UserService {
             boolean status = userDao.updatePassword(email, newpassword);
 
             if (status) {
-                userDao.deleteToken(email);
                 return status;
                 // redirect user to setup a new password page
             } else {
@@ -172,14 +171,12 @@ public class UserService {
                 } catch (IOException e) {
                 }
                 String content = contentBuilder.toString();
-                System.out.println(content);
                 //----------------------------------------------------------------------------------------------------
 
                 //Create URL and send email with reset URL
-                String frontendUrl = dotenv.get("FRONTEND_HOST");
-                String addressUrl =  frontendUrl +"/uservalues?token="+jwtToken;
+                String backendUrl = dotenv.get("BACKEND_HOST");
+                String addressUrl =  backendUrl +"/uservalues?token="+jwtToken;
                 String dynamicContent = content.replace("http://addURL", addressUrl);  //addressURL inserted in the reset button link as it replaces the dummy link "http://addressURL"
-                System.out.println(dynamicContent);
 
                 int status = EmailUtility.email(inputEmail.getString("email"), "Reset your RevMo password", dynamicContent);
                 if (status == 202) {
@@ -201,7 +198,7 @@ public class UserService {
     }
 
 
-    public void userValues(String token) {
+    public boolean userValues(String token) {
 
 
         try {
@@ -220,13 +217,19 @@ public class UserService {
                         java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
 
                         if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                            java.net.URI uri = new java.net.URI("http://localhost:5501/resetpassword.html");
+                            java.net.URI uri = new java.net.URI("http://ec2-18-188-40-149.us-east-2.compute.amazonaws.com/resetpassword.html");
                             desktop.browse(uri);
                         }
 
                     }
                 } else {
                     throw new RuntimeException(" Reset Link Expired");
+                }
+                boolean deletestats = userDao.deleteToken(token);
+                if(deletestats){
+                    return deletestats;
+                }else{
+                    throw new RuntimeException("OOPS something went wrong. Reset Link Expired");
                 }
             }
 
