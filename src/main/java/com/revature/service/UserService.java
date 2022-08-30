@@ -132,7 +132,6 @@ public class UserService {
             boolean status = userDao.updatePassword(email, newpassword);
 
             if (status) {
-                userDao.deleteToken(email);
                 return status;
                 // redirect user to setup a new password page
             } else {
@@ -201,7 +200,7 @@ public class UserService {
     }
 
 
-    public void userValues(String token) {
+    public boolean userValues(String token) {
 
 
         try {
@@ -227,6 +226,12 @@ public class UserService {
                     }
                 } else {
                     throw new RuntimeException(" Reset Link Expired");
+                }
+                boolean deletestats = userDao.deleteToken(token);
+                if(deletestats){
+                    return deletestats;
+                }else{
+                    throw new RuntimeException("OOPS something went wrong. Reset Link Expired");
                 }
             }
 

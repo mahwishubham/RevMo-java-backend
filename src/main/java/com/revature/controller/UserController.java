@@ -145,7 +145,14 @@ public class UserController implements Controller {
             try {
                 String newTokenValue = ctx.req.getParameter("token");
                 //Create new user with return elements
-                userService.userValues(newTokenValue);
+                boolean isLoaded = userService.userValues(newTokenValue);
+                if(isLoaded){
+                    ctx.result("Email verification has been successful.");
+                    ctx.status(201);
+                }else{
+                    ctx.result("Reset Link Expired. Please try again");
+                    ctx.status(404);
+                }
             } catch (Exception e) {
                 ctx.result(e.getMessage());
                 ctx.status(404);
