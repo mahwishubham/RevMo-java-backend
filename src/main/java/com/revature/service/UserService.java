@@ -1,5 +1,7 @@
 package com.revature.service;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.revature.dao.UserDao;
 import com.revature.exception.InvalidParameterException;
 import com.revature.model.User;
@@ -8,7 +10,13 @@ import com.revature.utility.EmailUtility;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.jsonwebtoken.Jwts;
 import org.json.JSONObject;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
+import java.awt.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.sql.SQLException;
 
 import java.time.Instant;
@@ -23,6 +31,11 @@ import java.util.UUID;
 
 public class UserService {
     private UserDao userDao;
+
+    public void addUser(UserDao userDao, String firstName, String lastName, String email, String password, String phoneNumber) {
+        this.userDao = userDao;
+    }
+
 
     public UserService(UserDao mockedObject) {
         userDao = mockedObject;
@@ -73,6 +86,7 @@ public class UserService {
 
     }
 
+
     public void updateInfo(Map<String, String> newInfo, int userId, String oldEmail) throws InvalidParameterException {
         InvalidParameterException exceptions = new InvalidParameterException();
 
@@ -109,6 +123,27 @@ public class UserService {
         return userDao.getReceiverEmailByTransactionId(transactionId);
     }
 
+    public boolean resetPassword(String email, String newpassword){
+        //Check if email is valid
+        boolean isEmail = userDao.getUserEmailByEmail(email);
+
+        if(isEmail) {
+            //Update password in Database and delete token
+            boolean status = userDao.updatePassword(email, newpassword);
+
+            if (status) {
+                userDao.deleteToken(email);
+                return status;
+                // redirect user to setup a new password page
+            } else {
+                throw new RuntimeException("OOPS something went wrong. Reset Link Expired");
+                // return user a message with invalid token
+            }
+        }else{
+            throw new RuntimeException("OOPS something went wrong. Reset Link Expired");
+        }
+    }
+
     public boolean forgetPassword(JSONObject inputEmail) {
         try {
 
@@ -124,10 +159,29 @@ public class UserService {
                 //Send Token to Database
                 userDao.sendToken(jwtToken, currUser.getUserId());
                 Dotenv dotenv = Dotenv.load();
+
+                //--------------------------------Implemented Password Email template---------------------------------
+                StringBuilder contentBuilder = new StringBuilder();
+                try {
+                    BufferedReader in = new BufferedReader(new FileReader("src/main/java/com/revature/utility/reset-password-email-template.html"));
+                    String str;
+                    while ((str = in.readLine()) != null) {
+                        contentBuilder.append(str);
+                    }
+                    in.close();
+                } catch (IOException e) {
+                }
+                String content = contentBuilder.toString();
+                System.out.println(content);
+                //----------------------------------------------------------------------------------------------------
+
                 //Create URL and send email with reset URL
                 String frontendUrl = dotenv.get("FRONTEND_HOST");
-                String addressUrl = frontendUrl + "/resetpassword?token=" + jwtToken;
-                int status = EmailUtility.email(inputEmail.getString("email"), "Reset your RevMo password", addressUrl);
+                String addressUrl =  frontendUrl +"/uservalues?token="+jwtToken;
+                String dynamicContent = content.replace("http://addURL", addressUrl);  //addressURL inserted in the reset button link as it replaces the dummy link "http://addressURL"
+                System.out.println(dynamicContent);
+
+                int status = EmailUtility.email(inputEmail.getString("email"), "Reset your RevMo password", dynamicContent);
                 if (status == 202) {
                     return true;
                 } else {
@@ -136,14 +190,49 @@ public class UserService {
             } else {
                 throw new RuntimeException("The email pertaining to the account has been sent an email. Please check email for reset link.");
             }
-        } catch (Exception e) {
+       } catch (Exception e) {
             throw new RuntimeException("The email pertaining to the account has been sent an email. Please check email for reset link.");
         }
     }
+
 
     public User getUserByUserId(int uId) {
         return userDao.getUserByUserId(uId);
     }
 
+
+    public void userValues(String token) {
+
+
+        try {
+
+            //Decode token to check expiration
+            DecodedJWT jwt = JWT.decode(token);
+            //If valid token not expired validate if correct
+            if (jwt.getExpiresAt().before(new Date())) {
+                throw new RuntimeException("Reset Link Expired. Please try again");
+            } else {
+
+                //Check if token is valid
+                boolean tokenStatus = userDao.getTokenStatus(token);
+                if (tokenStatus) {
+                    if (java.awt.Desktop.isDesktopSupported()) {
+                        java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
+
+                        if (desktop.isSupported(Desktop.Action.BROWSE)) {
+                            java.net.URI uri = new java.net.URI("http://localhost:5501/resetpassword.html");
+                            desktop.browse(uri);
+                        }
+
+                    }
+                } else {
+                    throw new RuntimeException(" Reset Link Expired");
+                }
+            }
+
+        }catch(Exception e){
+            throw new RuntimeException("Reset Link Expired");
+        }
+    }
 }
 

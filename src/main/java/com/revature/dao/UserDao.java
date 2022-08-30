@@ -27,7 +27,7 @@ public class UserDao {
             throw new RuntimeException(e);
         }
     }
-    public void addUser(String firstName, String lastname, String email, String password, String phoneNumber, String role_id) {
+    public void addUser(String firstName, String lastname, String email, String password, String phoneNumber, Integer role_id) {
         try (Connection con = ConnectionUtility.createConnection()) {
             PreparedStatement ps = con.prepareStatement("INSERT INTO users VALUES first_name = ?, last_name = ?, email = ? pass = ?, phone = ?, role_id = ?");
 
@@ -36,23 +36,23 @@ public class UserDao {
             ps.setString(3, email);
             ps.setString(4, password);
             ps.setString(5, phoneNumber);
-            ps.setString(6, role_id);
+            ps.setInt(6, role_id);
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void updatePassword(String password, String token) {
+    public boolean updatePassword(String email, String newpassword) {
         try (Connection con = ConnectionUtility.createConnection()) {
 
-            PreparedStatement ps = con.prepareStatement("UPDATE users SET pass = convert_to(?, 'LATIN1') WHERE tokenvalue=convert_to(?, 'LATIN1') RETURNING *");
+            PreparedStatement ps = con.prepareStatement("UPDATE users SET pass = convert_to(?, 'LATIN1') WHERE email=? RETURNING *");
 
-            ps.setString(1, password);
-            ps.setString(2, token);
+            ps.setString(1, newpassword);
+            ps.setString(2, email);
 
             ResultSet rs = ps.executeQuery();
-
+            return rs.next();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -122,12 +122,13 @@ public class UserDao {
         }
     }
 
-    public void deleteToken(String token) {
+    public boolean deleteToken(String token) {
         try (Connection con = ConnectionUtility.createConnection()) {
 
             PreparedStatement ps = con.prepareStatement("UPDATE users SET tokenvalue = null WHERE tokenvalue = convert_to(?, 'LATIN1')  RETURNING *");
             ps.setString(1, token);
             ResultSet rs = ps.executeQuery();
+            return rs.next();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -290,6 +291,25 @@ public class UserDao {
         }
     }
 
+    public boolean getTokenStatus(String token) {
+        boolean validity=false;
+        byte[] b = token.getBytes();
+        try (Connection con = ConnectionUtility.createConnection();) {
+            PreparedStatement ps = con.prepareStatement("SELECT ? IN(\n" +
+                    "\tSELECT tokenvalue \n" +
+                    "\t\tFROM users \n" +
+                    "\t\t) as tokens;");
+            ps.setBytes(1, b);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                validity = rs.getBoolean("tokens");
+            }
+            return validity;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
 }
 
 
