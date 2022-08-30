@@ -123,7 +123,6 @@ public class UserService {
             boolean status = userDao.updatePassword(email, newpassword);
 
             if (status) {
-                userDao.deleteToken(email);
                 return status;
                 // redirect user to setup a new password page
             } else {
@@ -174,7 +173,7 @@ public class UserService {
     }
 
 
-    public void userValues(String token) {
+    public boolean userValues(String token) {
 
 
         try {
@@ -195,13 +194,19 @@ public class UserService {
                         java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
 
                         if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                            java.net.URI uri = new java.net.URI("http://localhost:5051/resetpassword.html");
+                            java.net.URI uri = new java.net.URI("http://localhost:5501/resetpassword.html");
                             desktop.browse(uri);
                         }
 
                     }
                 } else {
                     throw new RuntimeException(" Reset Link Expired");
+                }
+                boolean deletestats = userDao.deleteToken(token);
+                if(deletestats){
+                    return deletestats;
+                }else{
+                    throw new RuntimeException("OOPS something went wrong. Reset Link Expired");
                 }
             }
 
